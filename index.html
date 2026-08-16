@@ -109,7 +109,7 @@
               </div>
 
               <div class="setting-item" style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-                <label style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; display: block; margin-bottom: 8px;">IDE Compatibility Helper</label>
+                <label style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; display: block; margin-bottom: 8px;">IDE Compatibility & Humanization</label>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                   <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
                     <input type="checkbox" id="check-ide-indent" style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
@@ -119,8 +119,12 @@
                     <input type="checkbox" id="check-ide-brackets" style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
                     <span>Bypass IDE Auto-Brackets / Quotes</span>
                   </label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
+                    <input type="checkbox" id="check-thinking-pauses" checked style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
+                    <span>Simulate Human Thinking Pauses</span>
+                  </label>
                 </div>
-                <span class="range-hint" style="margin-top: 4px; display: block;">Prevents duplicate brackets, quotes, and excessive spacing in coding IDEs.</span>
+                <span class="range-hint" style="margin-top: 4px; display: block;">Optimizes brackets, ignores auto-indents, and adds realistic pauses (1.5s - 3s) after coding blocks & random lines.</span>
               </div>
             </div>
           </div>

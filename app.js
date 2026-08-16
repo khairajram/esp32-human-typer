@@ -3422,6 +3422,7 @@ let typingMode = 'human';
 // IDE Compatibility helpers
 let bypassIdeIndent = false;
 let bypassIdeBrackets = false;
+let simulateThinkingPauses = true;
 
 // Metrics state
 let stats = {
@@ -3453,6 +3454,7 @@ const selectMode = document.getElementById('select-mode');
 // IDE Compatibility checkboxes
 const checkIdeIndent = document.getElementById('check-ide-indent');
 const checkIdeBrackets = document.getElementById('check-ide-brackets');
+const checkThinkingPauses = document.getElementById('check-thinking-pauses');
 
 const statWpm = document.getElementById('stat-wpm');
 const statAccuracy = document.getElementById('stat-accuracy');
@@ -3548,6 +3550,9 @@ print(calculate_fibonacci(10))`;
   });
   checkIdeBrackets.addEventListener('change', (e) => {
     bypassIdeBrackets = e.target.checked;
+  });
+  checkThinkingPauses.addEventListener('change', (e) => {
+    simulateThinkingPauses = e.target.checked;
   });
   
   txtInput.addEventListener('input', updateTotalCharsBadge);
@@ -3831,11 +3836,31 @@ function buildTypingTimeline(text) {
       prevChar = 'delete';
     }
     
-    // IDE Indent helper:
-    // If newline and helper is enabled, we skip the spaces in our typing queue.
-    if (bypassIdeIndent && char === '\n') {
-      while (i + 1 < text.length && (text[i + 1] === ' ' || text[i + 1] === '\t')) {
-        i++;
+    // Newline handling (Thinking pauses & Indent helper)
+    if (char === '\n') {
+      if (simulateThinkingPauses) {
+        let isAfterBlock = false;
+        let checkIdx = i - 1;
+        while (checkIdx >= 0 && (text[checkIdx] === ' ' || text[checkIdx] === '\t' || text[checkIdx] === '\r' || text[checkIdx] === '\n')) {
+          checkIdx--;
+        }
+        if (checkIdx >= 0 && text[checkIdx] === '}') {
+          isAfterBlock = true;
+        }
+        
+        if (isAfterBlock) {
+          const blockPause = Math.max(500, randomNormal(1800, 450));
+          currentTimeOffset += blockPause;
+        } else if (Math.random() < 0.15) {
+          const linePause = Math.max(400, randomNormal(1500, 350));
+          currentTimeOffset += linePause;
+        }
+      }
+      
+      if (bypassIdeIndent) {
+        while (i + 1 < text.length && (text[i + 1] === ' ' || text[i + 1] === '\t')) {
+          i++;
+        }
       }
     }
   }

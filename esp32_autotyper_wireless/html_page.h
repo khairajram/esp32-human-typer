@@ -782,7 +782,7 @@ body {
               </div>
 
               <div class="setting-item" style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-                <label style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; display: block; margin-bottom: 8px;">IDE Compatibility Helper</label>
+                <label style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; display: block; margin-bottom: 8px;">IDE Compatibility & Humanization</label>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                   <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
                     <input type="checkbox" id="check-ide-indent" style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
@@ -792,8 +792,12 @@ body {
                     <input type="checkbox" id="check-ide-brackets" style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
                     <span>Bypass IDE Auto-Brackets / Quotes</span>
                   </label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
+                    <input type="checkbox" id="check-thinking-pauses" checked style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
+                    <span>Simulate Human Thinking Pauses</span>
+                  </label>
                 </div>
-                <span class="range-hint" style="margin-top: 4px; display: block;">Prevents duplicate brackets, quotes, and excessive spacing in coding IDEs.</span>
+                <span class="range-hint" style="margin-top: 4px; display: block;">Optimizes brackets, ignores auto-indents, and adds realistic pauses (1.5s - 3s) after coding blocks & random lines.</span>
               </div>
             </div>
           </div>
@@ -942,6 +946,7 @@ let typingMode = 'human';
 
 let bypassIdeIndent = false;
 let bypassIdeBrackets = false;
+let simulateThinkingPauses = true;
 
 let stats = {
   totalKeystrokes: 0,
@@ -969,6 +974,7 @@ const selectMode = document.getElementById('select-mode');
 
 const checkIdeIndent = document.getElementById('check-ide-indent');
 const checkIdeBrackets = document.getElementById('check-ide-brackets');
+const checkThinkingPauses = document.getElementById('check-thinking-pauses');
 
 const statWpm = document.getElementById('stat-wpm');
 const statAccuracy = document.getElementById('stat-accuracy');
@@ -1067,6 +1073,9 @@ print(calculate_fibonacci(10))`;
   });
   checkIdeBrackets.addEventListener('change', (e) => {
     bypassIdeBrackets = e.target.checked;
+  });
+  checkThinkingPauses.addEventListener('change', (e) => {
+    simulateThinkingPauses = e.target.checked;
   });
   
   txtInput.addEventListener('input', updateTotalCharsBadge);
@@ -1230,9 +1239,31 @@ function buildTypingTimeline(text) {
       prevChar = 'delete';
     }
     
-    if (bypassIdeIndent && char === '\n') {
-      while (i + 1 < text.length && (text[i + 1] === ' ' || text[i + 1] === '\t')) {
-        i++;
+    // Newline handling (Thinking pauses & Indent helper)
+    if (char === '\n') {
+      if (simulateThinkingPauses) {
+        let isAfterBlock = false;
+        let checkIdx = i - 1;
+        while (checkIdx >= 0 && (text[checkIdx] === ' ' || text[checkIdx] === '\t' || text[checkIdx] === '\r' || text[checkIdx] === '\n')) {
+          checkIdx--;
+        }
+        if (checkIdx >= 0 && text[checkIdx] === '}') {
+          isAfterBlock = true;
+        }
+        
+        if (isAfterBlock) {
+          const blockPause = Math.max(500, randomNormal(1800, 450));
+          currentTimeOffset += blockPause;
+        } else if (Math.random() < 0.15) {
+          const linePause = Math.max(400, randomNormal(1500, 350));
+          currentTimeOffset += linePause;
+        }
+      }
+      
+      if (bypassIdeIndent) {
+        while (i + 1 < text.length && (text[i + 1] === ' ' || text[i + 1] === '\t')) {
+          i++;
+        }
       }
     }
   }
