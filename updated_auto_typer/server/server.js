@@ -25,8 +25,13 @@ app.use(express.json({ limit: '10mb' }));
 const devices = new Map();
 const webClients = new Set();
 
-// Utility: Get local network IPv4 address (prioritizes real physical Wi-Fi/Ethernet)
+// Utility: Get local network IPv4 address (prioritizes real physical Wi-Fi/Ethernet or env override)
 function getLocalIpAddress() {
+  // If running on AWS EC2 or cloud, use explicit public IP if provided
+  if (process.env.PUBLIC_IP) {
+    return process.env.PUBLIC_IP;
+  }
+
   const interfaces = os.networkInterfaces();
 
   // 1. First priority: Physical Wi-Fi or Wireless adapters
