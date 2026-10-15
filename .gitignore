@@ -14,3 +14,7 @@ Thumbs.db
 # Arduino Build files
 build/
 bin/
+
+# Node modules
+node_modules/
+package-lock.json
