@@ -466,6 +466,10 @@ function sampleFlightTime(char1, char2) {
 // ============================================================================
 function startTyping() {
   if (typingState === 'typing') return;
+  if (typingState === 'paused') {
+    resumeTyping();
+    return;
+  }
   const text = txtInput.value;
   if (!text) {
     alert('Please enter some text to type.');
@@ -525,7 +529,48 @@ function startTyping() {
 }
 
 function pauseTyping() {
-  stopTyping();
+  if (typingState === 'paused') {
+    resumeTyping();
+    return;
+  }
+  if (typingState !== 'typing') return;
+
+  typingState = 'paused';
+  if (playbackTimeout) clearTimeout(playbackTimeout);
+  if (stats.wpmInterval) clearInterval(stats.wpmInterval);
+
+  if (socketConnected && socket) {
+    socket.send(JSON.stringify({
+      type: 'PAUSE_TYPING',
+      target: selectedTarget
+    }));
+  }
+
+  updateUIForState();
+}
+
+function resumeTyping() {
+  if (typingState !== 'paused') return;
+
+  typingState = 'typing';
+  if (socketConnected && socket) {
+    socket.send(JSON.stringify({
+      type: 'RESUME_TYPING',
+      target: selectedTarget
+    }));
+  }
+
+  stats.startEpochMs = Date.now() - (stats.elapsedSeconds * 1000);
+  if (stats.wpmInterval) clearInterval(stats.wpmInterval);
+  stats.wpmInterval = setInterval(() => {
+    if (typingState === 'typing') {
+      stats.elapsedSeconds += 1;
+      updateSpeedAndWPM();
+    }
+  }, 1000);
+
+  updateUIForState();
+  playNextEvent();
 }
 
 function stopTyping() {
@@ -583,18 +628,34 @@ function executeEvent(event) {
 }
 
 function updateUIForState() {
+  const btnStartSpan = btnStart.querySelector('span');
+  const btnPauseSpan = btnPause.querySelector('span');
+
   if (typingState === 'typing') {
     terminalStateBadge.textContent = 'Typing...';
     terminalStateBadge.style.color = '#10b981';
     btnStart.disabled = true;
-    btnPause.disabled = true;
+    if (btnStartSpan) btnStartSpan.textContent = 'Typing in Progress...';
+    btnPause.disabled = false;
+    if (btnPauseSpan) btnPauseSpan.textContent = 'Pause';
+    btnStop.disabled = false;
+    txtInput.disabled = true;
+  } else if (typingState === 'paused') {
+    terminalStateBadge.textContent = 'Paused';
+    terminalStateBadge.style.color = '#f59e0b';
+    btnStart.disabled = false;
+    if (btnStartSpan) btnStartSpan.textContent = 'Resume Typing';
+    btnPause.disabled = false;
+    if (btnPauseSpan) btnPauseSpan.textContent = 'Resume';
     btnStop.disabled = false;
     txtInput.disabled = true;
   } else if (typingState === 'idle') {
     terminalStateBadge.textContent = 'Idle';
     terminalStateBadge.style.color = '#6b7280';
     btnStart.disabled = false;
+    if (btnStartSpan) btnStartSpan.textContent = 'Start Auto-Typing';
     btnPause.disabled = true;
+    if (btnPauseSpan) btnPauseSpan.textContent = 'Pause';
     btnStop.disabled = true;
     txtInput.disabled = false;
 

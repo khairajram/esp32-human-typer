@@ -243,6 +243,40 @@ wss.on('connection', (ws, req) => {
           broadcastToWebClients(getDeviceListPayload());
         }
 
+        // Forward Pause to Target Device(s)
+        else if (msg.type === 'PAUSE_TYPING') {
+          const { target } = msg;
+          console.log(`[||] Pause typing command received for target: ${target}`);
+
+          for (const [id, dev] of devices.entries()) {
+            if ((target === 'ALL' || target === id) && dev.ws && dev.ws.readyState === WebSocket.OPEN) {
+              dev.state = 'paused';
+              dev.ws.send(JSON.stringify({
+                type: 'PAUSE_QUEUE'
+              }));
+            }
+          }
+
+          broadcastToWebClients(getDeviceListPayload());
+        }
+
+        // Forward Resume to Target Device(s)
+        else if (msg.type === 'RESUME_TYPING') {
+          const { target } = msg;
+          console.log(`[>] Resume typing command received for target: ${target}`);
+
+          for (const [id, dev] of devices.entries()) {
+            if ((target === 'ALL' || target === id) && dev.ws && dev.ws.readyState === WebSocket.OPEN) {
+              dev.state = 'typing';
+              dev.ws.send(JSON.stringify({
+                type: 'RESUME_QUEUE'
+              }));
+            }
+          }
+
+          broadcastToWebClients(getDeviceListPayload());
+        }
+
       } catch (err) {
         console.error('[!] Failed to parse client message:', err.message);
       }

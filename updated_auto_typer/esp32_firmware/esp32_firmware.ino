@@ -50,6 +50,7 @@ WebsocketsClient wsClient;
 // Non-blocking Queue State Machine
 String typingQueue = "";
 bool isTyping = false;
+bool isPaused = false;
 int queueIndex = 0;
 unsigned long nextActionTime = 0;
 
@@ -108,6 +109,7 @@ void onMessageCallback(WebsocketsMessage message) {
       typingQueue = queue;
       queueIndex = 0;
       isTyping = true;
+      isPaused = false;
       nextActionTime = millis(); // Start immediately
 
       if (!bleKeyboard.isConnected()) {
@@ -120,16 +122,31 @@ void onMessageCallback(WebsocketsMessage message) {
       sendStatusUpdate("typing");
     }
   }
-  // 2. Abort / Stop Typing
+  // 2. Pause Typing Queue
+  else if (data.indexOf("\"PAUSE_QUEUE\"") != -1) {
+    Serial.println("[||] Received PAUSE request from server");
+    isPaused = true;
+    bleKeyboard.releaseAll();
+    sendStatusUpdate("paused");
+  }
+  // 3. Resume Typing Queue
+  else if (data.indexOf("\"RESUME_QUEUE\"") != -1) {
+    Serial.println("[>] Received RESUME request from server");
+    isPaused = false;
+    nextActionTime = millis() + 50;
+    sendStatusUpdate("typing");
+  }
+  // 4. Abort / Stop Typing
   else if (data.indexOf("\"ABORT_QUEUE\"") != -1) {
     Serial.println("[!] Received abort request from server");
     isTyping = false;
+    isPaused = false;
     typingQueue = "";
     queueIndex = 0;
     bleKeyboard.releaseAll();
     sendStatusUpdate("idle");
   }
-  // 3. Heartbeat Ping
+  // 5. Heartbeat Ping
   else if (data.indexOf("\"PING\"") != -1) {
     wsClient.send("{\"type\":\"PONG\"}");
   }
@@ -231,7 +248,7 @@ void loop() {
   }
 
   // 4. Non-blocking Typing State Machine
-  if (isTyping && now >= nextActionTime) {
+  if (isTyping && !isPaused && now >= nextActionTime) {
     if (queueIndex < typingQueue.length()) {
       int nextSemi = typingQueue.indexOf(';', queueIndex);
       if (nextSemi != -1) {
