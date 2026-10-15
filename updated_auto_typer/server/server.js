@@ -25,9 +25,35 @@ app.use(express.json({ limit: '10mb' }));
 const devices = new Map();
 const webClients = new Set();
 
-// Utility: Get local network IPv4 address
+// Utility: Get local network IPv4 address (prioritizes real physical Wi-Fi/Ethernet)
 function getLocalIpAddress() {
   const interfaces = os.networkInterfaces();
+
+  // 1. First priority: Physical Wi-Fi or Wireless adapters
+  for (const name of Object.keys(interfaces)) {
+    const lower = name.toLowerCase();
+    if (lower.includes('wi-fi') || lower.includes('wireless') || lower.includes('wlan')) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          return iface.address;
+        }
+      }
+    }
+  }
+
+  // 2. Second priority: Physical Ethernet adapters (exclude virtual WSL/VMware/Hyper-V)
+  for (const name of Object.keys(interfaces)) {
+    const lower = name.toLowerCase();
+    if (!lower.includes('vethernet') && !lower.includes('wsl') && !lower.includes('vmware') && !lower.includes('virtual') && !lower.includes('loopback')) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          return iface.address;
+        }
+      }
+    }
+  }
+
+  // 3. Fallback: Any non-internal IPv4
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name]) {
       if (iface.family === 'IPv4' && !iface.internal) {
@@ -257,7 +283,10 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('       ESP32 MULTI-DEVICE AUTO-TYPER CENTRAL SERVER     ');
   console.log('========================================================');
   console.log(` Dashboard URL:       http://localhost:${PORT}`);
-  console.log(` LAN Access URL:      http://${localIp}:${PORT}`);
+  console.log(` Wi-Fi / LAN URL:     http://${localIp}:${PORT}`);
   console.log(` ESP32 WebSocket URL: ws://${localIp}:${PORT}/ws/device`);
+  console.log('--------------------------------------------------------');
+  console.log(' 👉 USE THIS IP IN YOUR esp32_firmware.ino:');
+  console.log(`    const char* SERVER_HOST = "${localIp}";`);
   console.log('========================================================\n');
 });

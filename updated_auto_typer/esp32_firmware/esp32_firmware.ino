@@ -184,9 +184,25 @@ void onEventsCallback(WebsocketsEvent event, String data) {
 }
 
 void connectToWebSocket() {
-  Serial.printf("[...] Connecting to WebSocket server at %s:%d\n", SERVER_HOST, SERVER_PORT);
-  String wsUrl = String("ws://") + SERVER_HOST + ":" + String(SERVER_PORT) + "/ws/device";
-  wsClient.connect(wsUrl);
+  String cleanHost = SERVER_HOST;
+  cleanHost.replace("http://", "");
+  cleanHost.replace("https://", "");
+  cleanHost.replace("ws://", "");
+  cleanHost.replace("wss://", "");
+  while (cleanHost.endsWith("/")) {
+    cleanHost.remove(cleanHost.length() - 1);
+  }
+
+  Serial.printf("[...] Attempting WebSocket connection to %s:%d/ws/device ...\n", cleanHost.c_str(), SERVER_PORT);
+  bool success = wsClient.connect(cleanHost.c_str(), SERVER_PORT, "/ws/device");
+  if (success) {
+    Serial.println("[+] SUCCESS: WebSocket connected to Central Server!");
+  } else {
+    Serial.println("[-] FAILED: Could not reach WebSocket server.");
+    Serial.println("    1. Is the Node.js server running on your PC?");
+    Serial.printf("    2. Ensure SERVER_HOST matches your PC Wi-Fi IP (Current: %s)\n", cleanHost.c_str());
+    Serial.println("    3. Check if Windows Firewall is blocking port 3000.");
+  }
 }
 
 void setup() {
