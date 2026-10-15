@@ -101,48 +101,63 @@ void sendRegistration() {
 void onMessageCallback(WebsocketsMessage message) {
   String data = message.data();
 
-  // 1. Execute Typing Queue
-  if (data.indexOf("\"EXECUTE_QUEUE\"") != -1) {
-    String queue = extractJsonString(data, "queue");
-    if (queue.length() > 0) {
-      Serial.printf("[->] Received typing queue (%d bytes)\n", queue.length());
-      typingQueue = queue;
-      queueIndex = 0;
-      isTyping = true;
-      isPaused = false;
-      nextActionTime = millis(); // Start immediately
+  // 1. Real-Time Keystroke Execution (~25 bytes payload, zero heap overhead)
+  if (data.indexOf("\"K\"") != -1) {
+    char action = ' ';
+    int aIdx = data.indexOf("\"a\":\"");
+    if (aIdx != -1) action = data.charAt(aIdx + 5);
 
-      if (!bleKeyboard.isConnected()) {
-        Serial.println("[!] WARNING: Bluetooth is NOT connected to the target PC!");
-        Serial.printf("    Please open Bluetooth settings on target PC and pair with '%s'\n", BLE_KEYBOARD_NAME);
+    int code = 0;
+    int cIdx = data.indexOf("\"c\":");
+    if (cIdx != -1) {
+      int endIdx = data.indexOf("}", cIdx);
+      if (endIdx != -1) {
+        code = data.substring(cIdx + 4, endIdx).toInt();
       } else {
-        Serial.println("[+] Target PC is connected over Bluetooth. Typing now...");
+        code = data.substring(cIdx + 4).toInt();
       }
+    }
 
-      sendStatusUpdate("typing");
+    if (bleKeyboard.isConnected()) {
+      if (action == 'P') {
+        bleKeyboard.press((uint8_t)code);
+      } else if (action == 'R') {
+        bleKeyboard.release((uint8_t)code);
+      } else if (action == 'A') {
+        bleKeyboard.releaseAll();
+      }
+    } else {
+      static unsigned long lastBleWarn = 0;
+      if (millis() - lastBleWarn > 3000) {
+        lastBleWarn = millis();
+        Serial.printf("[!] Key ignored: Bluetooth '%s' is NOT connected to PC!\n", BLE_KEYBOARD_NAME);
+      }
     }
   }
-  // 2. Pause Typing Queue
-  else if (data.indexOf("\"PAUSE_QUEUE\"") != -1) {
-    Serial.println("[||] Received PAUSE request from server");
-    isPaused = true;
-    bleKeyboard.releaseAll();
-    sendStatusUpdate("paused");
-  }
-  // 3. Resume Typing Queue
-  else if (data.indexOf("\"RESUME_QUEUE\"") != -1) {
-    Serial.println("[>] Received RESUME request from server");
+  // 2. Start Typing Session
+  else if (data.indexOf("\"START_SESSION\"") != -1) {
+    Serial.println("[->] Typing session started from Dashboard");
+    isTyping = true;
     isPaused = false;
-    nextActionTime = millis() + 50;
+    if (!bleKeyboard.isConnected()) {
+      Serial.printf("[!] WARNING: Bluetooth is NOT connected to target PC! Pair with '%s'\n", BLE_KEYBOARD_NAME);
+    } else {
+      Serial.println("[+] Target PC is connected over Bluetooth. Ready to type!");
+    }
     sendStatusUpdate("typing");
   }
-  // 4. Abort / Stop Typing
-  else if (data.indexOf("\"ABORT_QUEUE\"") != -1) {
-    Serial.println("[!] Received abort request from server");
+  // 3. Resume Session
+  else if (data.indexOf("\"RESUME_SESSION\"") != -1) {
+    Serial.println("[>] Typing session resumed");
+    isTyping = true;
+    isPaused = false;
+    sendStatusUpdate("typing");
+  }
+  // 4. Stop Session
+  else if (data.indexOf("\"STOP_SESSION\"") != -1) {
+    Serial.println("[!] Typing session stopped");
     isTyping = false;
     isPaused = false;
-    typingQueue = "";
-    queueIndex = 0;
     bleKeyboard.releaseAll();
     sendStatusUpdate("idle");
   }
@@ -247,8 +262,8 @@ void loop() {
     }
   }
 
-  // 4. Non-blocking Typing State Machine
-  if (isTyping && !isPaused && now >= nextActionTime) {
+  // 4. Non-blocking Typing Queue Processor (if queue is loaded)
+  if (typingQueue.length() > 0 && isTyping && !isPaused && now >= nextActionTime) {
     if (queueIndex < typingQueue.length()) {
       int nextSemi = typingQueue.indexOf(';', queueIndex);
       if (nextSemi != -1) {

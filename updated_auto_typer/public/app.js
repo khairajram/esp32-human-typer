@@ -485,26 +485,10 @@ function startTyping() {
     typingTimeline = buildTypingTimeline(text);
     playbackIndex = 0;
 
-    // Generate compressed command queue for target ESP32
-    // Format: P<keycode>,<delay>;R<keycode>,<delay>;...
-    let queueString = "";
-    for (let i = 0; i < typingTimeline.length; i++) {
-      const ev = typingTimeline[i];
-      let delay = 0;
-      if (i > 0) {
-        delay = Math.round((ev.offset - typingTimeline[i - 1].offset) / speedMultiplier);
-      } else {
-        delay = Math.round(ev.offset / speedMultiplier);
-      }
-      const action = ev.type === 'press' ? 'P' : 'R';
-      queueString += action + ev.code + ',' + delay + ';';
-    }
-
-    // Send to Central Server via WebSocket
+    // Notify Central Server of typing session start (lightweight, zero memory overhead)
     socket.send(JSON.stringify({
       type: 'START_TYPING',
-      target: selectedTarget,
-      queue: queueString
+      target: selectedTarget
     }));
 
     stats.totalKeystrokes = 0;
@@ -618,6 +602,16 @@ function playNextEvent() {
 }
 
 function executeEvent(event) {
+  // Stream live event to target ESP32 via Central Server (instant execution, zero heap fragmentation)
+  if (socketConnected && socket) {
+    socket.send(JSON.stringify({
+      type: 'KEY_EVENT',
+      target: selectedTarget,
+      action: event.type === 'press' ? 'P' : 'R',
+      code: event.code
+    }));
+  }
+
   if (event.type === 'press') {
     stats.totalKeystrokes++;
     if (!event.isTypo) {

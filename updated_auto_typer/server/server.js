@@ -199,18 +199,17 @@ wss.on('connection', (ws, req) => {
       try {
         const msg = JSON.parse(raw.toString());
 
-        // Forward Typing Queue to Selected Target Device(s)
+        // Start Typing Session on Selected Target Device(s)
         if (msg.type === 'START_TYPING') {
-          const { target, queue } = msg;
-          console.log(`[->] Start typing command received for target: ${target}`);
+          const { target } = msg;
+          console.log(`[->] Start typing session for target: ${target}`);
 
           let dispatchedCount = 0;
           for (const [id, dev] of devices.entries()) {
             if ((target === 'ALL' || target === id) && dev.ws && dev.ws.readyState === WebSocket.OPEN) {
               dev.state = 'typing';
               dev.ws.send(JSON.stringify({
-                type: 'EXECUTE_QUEUE',
-                queue: queue
+                type: 'START_SESSION'
               }));
               dispatchedCount++;
             }
@@ -226,6 +225,20 @@ wss.on('connection', (ws, req) => {
           broadcastToWebClients(getDeviceListPayload());
         }
 
+        // Real-Time Keystroke Forwarding (Ultra-low latency, zero memory crash)
+        else if (msg.type === 'KEY_EVENT') {
+          const { target, action, code } = msg;
+          for (const [id, dev] of devices.entries()) {
+            if ((target === 'ALL' || target === id) && dev.ws && dev.ws.readyState === WebSocket.OPEN) {
+              dev.ws.send(JSON.stringify({
+                type: 'K',
+                a: action,
+                c: code
+              }));
+            }
+          }
+        }
+
         // Forward Stop / Cancel to Target Device(s)
         else if (msg.type === 'STOP_TYPING') {
           const { target } = msg;
@@ -235,7 +248,12 @@ wss.on('connection', (ws, req) => {
             if ((target === 'ALL' || target === id) && dev.ws && dev.ws.readyState === WebSocket.OPEN) {
               dev.state = 'idle';
               dev.ws.send(JSON.stringify({
-                type: 'ABORT_QUEUE'
+                type: 'STOP_SESSION'
+              }));
+              dev.ws.send(JSON.stringify({
+                type: 'K',
+                a: 'A',
+                c: 0
               }));
             }
           }
@@ -252,7 +270,9 @@ wss.on('connection', (ws, req) => {
             if ((target === 'ALL' || target === id) && dev.ws && dev.ws.readyState === WebSocket.OPEN) {
               dev.state = 'paused';
               dev.ws.send(JSON.stringify({
-                type: 'PAUSE_QUEUE'
+                type: 'K',
+                a: 'A',
+                c: 0
               }));
             }
           }
@@ -269,7 +289,7 @@ wss.on('connection', (ws, req) => {
             if ((target === 'ALL' || target === id) && dev.ws && dev.ws.readyState === WebSocket.OPEN) {
               dev.state = 'typing';
               dev.ws.send(JSON.stringify({
-                type: 'RESUME_QUEUE'
+                type: 'RESUME_SESSION'
               }));
             }
           }
