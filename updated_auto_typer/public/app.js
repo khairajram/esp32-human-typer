@@ -110,6 +110,7 @@ const terminalStateBadge = document.getElementById('terminal-state');
 const progressBarFill = document.getElementById('progress-bar-fill');
 const charsTypedBadge = document.getElementById('chars-typed');
 const charsTotalBadge = document.getElementById('chars-total');
+const charsTotalPlaybackBadge = document.getElementById('chars-total-playback');
 
 // Math: Normal distribution Box-Muller transform
 function randomNormal(mean, std) {
@@ -678,7 +679,8 @@ function renderVisualizer(charIndex, event) {
 
 function updateTotalCharsBadge() {
   const len = txtInput.value.length;
-  charsTotalBadge.textContent = len;
+  if (charsTotalBadge) charsTotalBadge.textContent = len;
+  if (charsTotalPlaybackBadge) charsTotalPlaybackBadge.textContent = len;
   if (typingState === 'idle') {
     charsTypedBadge.textContent = 0;
     progressBarFill.style.width = '0%';

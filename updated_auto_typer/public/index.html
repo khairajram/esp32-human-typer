@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32 Multi-Device Human Auto-Typer Hub</title>
+  <title>ESP32 Multi-Device Human Typer - Control Center</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <!-- Ambient background glow -->
@@ -17,38 +17,57 @@
   </div>
 
   <div class="app-container">
-    <!-- App Header -->
+    <!-- Header -->
     <header class="app-header">
-      <div class="logo-group">
-        <div class="logo-icon">⚡</div>
+      <div class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" class="logo-icon">
+            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+            <line x1="6" y1="8" x2="6" y2="8"></line>
+            <line x1="10" y1="8" x2="10" y2="8"></line>
+            <line x1="14" y1="8" x2="14" y2="8"></line>
+            <line x1="18" y1="8" x2="18" y2="8"></line>
+            <line x1="6" y1="12" x2="6" y2="12"></line>
+            <line x1="10" y1="12" x2="18" y2="12"></line>
+            <line x1="6" y1="16" x2="18" y2="16"></line>
+          </svg>
+        </div>
         <div>
-          <h1 class="logo-title">HUMAN AUTO-TYPER <span class="badge-v2">CENTRAL HUB</span></h1>
-          <p class="logo-subtitle">Multi-ESP32 Bluetooth LE Keyboard Automation Controller</p>
+          <h1>ESP32 Human Typer <span class="badge">Multi-Device Hub</span></h1>
         </div>
       </div>
-      <div class="server-status-pill">
-        <div class="pulse-dot" id="server-indicator"></div>
-        <span id="server-status-text">Connecting to Server...</span>
+      
+      <div class="header-status">
+        <div class="status-item">
+          <span class="status-label">Central Server:</span>
+          <span id="server-status-text" class="status-val disconnected">Connecting...</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Active Target:</span>
+          <span id="target-indicator-tag" class="status-val connected" style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border-color: rgba(139, 92, 246, 0.3);">ESP_ALPHA</span>
+        </div>
       </div>
     </header>
 
     <!-- Server LAN Info Banner -->
     <div class="server-banner">
       <div class="server-info">
-        <span style="font-weight: 600; color: var(--text-primary);">🌐 Server Node:</span>
-        <span id="banner-server-ip" style="font-family: var(--font-mono);">ws://localhost:3000</span>
+        <div class="pulse-dot" id="server-indicator"></div>
+        <span style="font-weight: 600; color: var(--text-primary);">Central Node:</span>
+        <span id="banner-server-ip" style="font-family: var(--font-mono); color: var(--primary);">ws://10.208.114.32:3000/ws/device</span>
       </div>
-      <div style="font-size: 12px; color: var(--text-muted);" id="banner-active-count">
+      <div id="banner-active-count" style="font-size: 12px; color: var(--text-muted);">
         Connected Devices: 0 | Dashboards: 1
       </div>
     </div>
 
-    <!-- Active ESP32 Devices Live Cards -->
+    <!-- Active ESP32 Devices Status Cards -->
     <div class="devices-container" id="devices-container">
       <!-- Device Card 1 -->
       <div class="device-card offline" id="card-ESP_ALPHA">
         <div class="device-card-header">
           <div class="device-title">
+            <span style="font-size: 16px;">🔵</span>
             <span>ESP32 Unit 1 (Alpha)</span>
             <span class="device-id-badge">ESP_ALPHA</span>
           </div>
@@ -62,16 +81,16 @@
             </span>
           </div>
           <div class="device-detail-item">
-            <span class="detail-label">Target Name</span>
+            <span class="detail-label">Target BLE Name</span>
             <span class="detail-value" id="blename-ESP_ALPHA">ESP32 Typer - Alpha</span>
           </div>
           <div class="device-detail-item">
             <span class="detail-label">Device IP</span>
-            <span class="detail-value" id="ip-ESP_ALPHA">Waiting...</span>
+            <span class="detail-value" id="ip-ESP_ALPHA">--</span>
           </div>
           <div class="device-detail-item">
             <span class="detail-label">State</span>
-            <span class="detail-value" id="state-ESP_ALPHA">Idle</span>
+            <span class="detail-value" id="state-ESP_ALPHA">IDLE</span>
           </div>
         </div>
       </div>
@@ -80,6 +99,7 @@
       <div class="device-card offline" id="card-ESP_BETA">
         <div class="device-card-header">
           <div class="device-title">
+            <span style="font-size: 16px;">🟣</span>
             <span>ESP32 Unit 2 (Beta)</span>
             <span class="device-id-badge">ESP_BETA</span>
           </div>
@@ -93,26 +113,27 @@
             </span>
           </div>
           <div class="device-detail-item">
-            <span class="detail-label">Target Name</span>
+            <span class="detail-label">Target BLE Name</span>
             <span class="detail-value" id="blename-ESP_BETA">ESP32 Typer - Beta</span>
           </div>
           <div class="device-detail-item">
             <span class="detail-label">Device IP</span>
-            <span class="detail-value" id="ip-ESP_BETA">Waiting...</span>
+            <span class="detail-value" id="ip-ESP_BETA">--</span>
           </div>
           <div class="device-detail-item">
             <span class="detail-label">State</span>
-            <span class="detail-value" id="state-ESP_BETA">Idle</span>
+            <span class="detail-value" id="state-ESP_BETA">IDLE</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Target Device Selector Bar -->
+    <!-- Target Destination Selector -->
     <div class="target-selector-card">
       <div class="target-selector-label">
-        <span>🎯 Target Destination:</span>
-        <span style="font-size: 11px; color: var(--text-muted); font-weight: 400;">Choose which ESP32 will output the keystrokes</span>
+        <span style="font-size: 15px;">🎯</span>
+        <span style="font-weight: 600;">Target Output Destination:</span>
+        <span style="font-size: 12px; color: var(--text-muted); font-weight: 400;">Choose which ESP32 will output your keystrokes to its connected PC</span>
       </div>
       <div class="target-segmented-group" id="target-segmented-group">
         <button type="button" class="target-option-btn active" data-target="ESP_ALPHA">
@@ -122,163 +143,168 @@
           <span>🟣 ESP32 #2 (Beta)</span>
         </button>
         <button type="button" class="target-option-btn" data-target="ALL">
-          <span>⚡ Both (Simultaneous)</span>
+          <span>⚡ Both (Simultaneous Broadcast)</span>
         </button>
       </div>
     </div>
 
-    <!-- Main Workspace -->
-    <main class="main-content">
-      <!-- Left Column: Input and Configuration -->
-      <section class="control-panel">
-        <div class="card editor-card">
-          <div class="card-header">
-            <div class="header-title">
-              <span class="icon">📝</span>
-              <h2>Source Code / Text Buffer</h2>
-            </div>
-            <div class="header-actions">
-              <button id="btn-load-sample" class="btn btn-secondary btn-sm">Sample Code</button>
-              <button id="btn-clear" class="btn btn-ghost btn-sm">Clear</button>
+    <!-- Main Workspace (Spacious 2-Column Split) -->
+    <main class="app-main">
+      <!-- Left Column: Large Input Area & Human Settings -->
+      <section class="main-column left">
+        <!-- Large Text Input Card -->
+        <div class="card glass editor-card">
+          <div class="card-header editor-header">
+            <h2>Typing Data Source</h2>
+            <div class="textarea-actions">
+              <button id="btn-load-sample" class="btn btn-secondary btn-sm">Load Sample Code</button>
+              <button id="btn-clear" class="btn btn-text btn-sm">Clear Text</button>
             </div>
           </div>
-          
-          <div class="editor-container">
-            <textarea id="typing-input" class="code-textarea" placeholder="Paste your code or text here to be auto-typed into the target computer via the selected ESP32..."></textarea>
-          </div>
-
-          <div class="editor-footer">
-            <span class="text-counter"><span id="chars-total">0</span> characters</span>
-            <span class="connection-target-indicator" id="target-indicator-tag">Target: ESP_ALPHA</span>
-          </div>
-        </div>
-
-        <!-- Simulation Settings -->
-        <div class="card settings-card">
-          <div class="card-header">
-            <div class="header-title">
-              <span class="icon">⚙️</span>
-              <h2>Typing Dynamics & Humanization</h2>
-            </div>
-          </div>
-
-          <div class="settings-grid">
-            <div class="setting-item">
-              <div class="setting-label-row">
-                <label for="speed-slider">Speed Multiplier</label>
-                <span id="speed-val" class="setting-bubble">1.0x</span>
-              </div>
-              <input type="range" id="speed-slider" min="0.5" max="3.0" step="0.1" value="1.0" class="input-range">
-              <span class="range-hint">Scales realistic keystroke intervals sampled from 141,000+ keystrokes</span>
-            </div>
-
-            <div class="setting-item">
-              <div class="setting-label-row">
-                <label for="error-slider">Typo Rate & Correction</label>
-                <span id="error-val" class="setting-bubble">6.8%</span>
-              </div>
-              <input type="range" id="error-slider" min="0" max="20" step="0.5" value="6.8" class="input-range">
-              <span class="range-hint">Simulate keyboard neighbor typos with realistic hesitation and backspaces</span>
-            </div>
-
-            <div class="setting-item">
-              <label for="select-mode">Simulation Mode</label>
-              <select id="select-mode" class="input-select">
-                <option value="human" selected>Human Simulation (Log-Based Biometrics)</option>
-                <option value="robot">Constant / Robotic Speed (Immediate)</option>
-              </select>
-            </div>
-
-            <div class="setting-item" style="border-top: 1px solid var(--border-color); padding-top: 14px;">
-              <label style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; display: block; margin-bottom: 8px;">IDE Compatibility & Humanization</label>
-              <div style="display: flex; flex-direction: column; gap: 10px;">
-                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
-                  <input type="checkbox" id="check-ide-indent" style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
-                  <span>Bypass IDE Auto-Indentation (Removes duplicate leading spaces)</span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
-                  <input type="checkbox" id="check-ide-brackets" checked style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
-                  <span>Bypass IDE Auto-Brackets / Quotes (Instant Delete Neutralizer)</span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
-                  <input type="checkbox" id="check-thinking-pauses" checked style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
-                  <span>Simulate Human Thinking Pauses (1.8s on block completion, 1.5s on random lines)</span>
-                </label>
-              </div>
+          <div class="card-body flex-column editor-body">
+            <textarea id="typing-input" placeholder="Paste your code or text here to be auto-typed into the target computer via the selected ESP32..." class="input-textarea"></textarea>
+            <div class="editor-subfooter">
+              <span class="text-counter">Total Characters: <strong id="chars-total">0</strong></span>
             </div>
           </div>
         </div>
 
-        <!-- Action Control Buttons -->
-        <div class="actions-card">
-          <button id="btn-start" class="btn btn-primary btn-lg">
-            <span class="btn-icon">▶</span> Start Auto-Typing
-          </button>
-          <button id="btn-pause" class="btn btn-warning btn-lg" disabled>
-            <span class="btn-icon">⏸</span> Pause
-          </button>
-          <button id="btn-stop" class="btn btn-danger btn-lg" disabled>
-            <span class="btn-icon">⏹</span> Abort / Stop
-          </button>
+        <!-- Human Simulation Settings Card -->
+        <div class="card glass">
+          <div class="card-header">
+            <h2>Human Simulation Settings</h2>
+          </div>
+          <div class="card-body">
+            <div class="settings-group">
+              <div class="setting-item">
+                <div class="setting-label-row">
+                  <label for="select-mode">Typing Profile</label>
+                </div>
+                <select id="select-mode" class="input-select">
+                  <option value="human" selected>Human Simulated (141k Keystroke Model)</option>
+                  <option value="robot">Robot (Instant / Fast)</option>
+                </select>
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-label-row">
+                  <label for="speed-slider">Speed Multiplier</label>
+                  <span id="speed-val" class="setting-bubble">1.0x</span>
+                </div>
+                <input type="range" id="speed-slider" min="0.2" max="3" step="0.1" value="1.0" class="input-range">
+                <span class="range-hint">Scales realistic keystroke intervals sampled from real human typing logs</span>
+              </div>
+
+              <div class="setting-item">
+                <div class="setting-label-row">
+                  <label for="error-slider">Typo Rate & Corrections</label>
+                  <span id="error-val" class="setting-bubble">6.8%</span>
+                </div>
+                <input type="range" id="error-slider" min="0" max="20" step="0.5" value="6.8" class="input-range">
+                <span class="range-hint">Simulate keyboard neighbor typos with realistic hesitation and backspaces</span>
+              </div>
+
+              <div class="setting-item" style="border-top: 1px solid var(--border-color); padding-top: 14px;">
+                <label style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; display: block; margin-bottom: 8px;">IDE Compatibility & Humanization</label>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
+                    <input type="checkbox" id="check-ide-indent" style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
+                    <span>Bypass IDE Auto-Indentation (Stops duplicate spaces)</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
+                    <input type="checkbox" id="check-ide-brackets" checked style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
+                    <span>Bypass IDE Auto-Brackets / Quotes (Instant Delete Neutralizer)</span>
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer;">
+                    <input type="checkbox" id="check-thinking-pauses" checked style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;">
+                    <span>Simulate Human Thinking Pauses (1.8s on block completion, 1.5s on random lines)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <!-- Right Column: Visualizer & Live Stats -->
-      <section class="display-panel">
-        <div class="card visualizer-card">
-          <div class="card-header">
-            <div class="header-title">
-              <span class="icon">🖥️</span>
-              <h2>Real-Time Keystroke Playback</h2>
+      <!-- Right Column: Big Previewer / Visualizer & Live Stats -->
+      <section class="main-column right">
+        <!-- Stats Dashboard -->
+        <div class="stats-grid">
+          <div class="stat-card glass">
+            <span class="stat-label">Typing Speed</span>
+            <div class="stat-val-container">
+              <span id="stat-wpm" class="stat-value">0</span>
+              <span class="stat-unit">WPM</span>
             </div>
-            <span id="terminal-state" class="badge">Idle</span>
-          </div>
-
-          <div class="progress-bar-container">
-            <div id="progress-bar-fill" class="progress-bar-fill"></div>
-          </div>
-
-          <div class="visualizer-screen">
-            <div id="typing-visualizer" class="code-stream"></div>
           </div>
           
-          <div class="visualizer-footer">
-            <span>Characters Streamed: <strong id="chars-typed">0</strong></span>
+          <div class="stat-card glass">
+            <span class="stat-label">Accuracy</span>
+            <div class="stat-val-container">
+              <span id="stat-accuracy" class="stat-value">100</span>
+              <span class="stat-unit">%</span>
+            </div>
+          </div>
+
+          <div class="stat-card glass">
+            <span class="stat-label">Progress</span>
+            <div class="stat-val-container">
+              <span id="stat-progress" class="stat-value">0</span>
+              <span class="stat-unit">%</span>
+            </div>
+          </div>
+
+          <div class="stat-card glass">
+            <span class="stat-label">Time Remaining</span>
+            <div class="stat-val-container">
+              <span id="stat-eta" class="stat-value">--:--</span>
+              <span class="stat-unit">ETA</span>
+            </div>
           </div>
         </div>
 
-        <!-- Real-Time Metrics -->
-        <div class="card metrics-card">
-          <div class="metrics-grid">
-            <div class="metric-box">
-              <span class="metric-label">Estimated Speed</span>
-              <div class="metric-value-group">
-                <span id="stat-wpm" class="metric-val">0</span>
-                <span class="metric-unit">WPM</span>
-              </div>
+        <!-- Large Mac-Style Terminal Output / Previewer -->
+        <div class="card glass terminal-card">
+          <div class="card-header terminal-header">
+            <div class="terminal-dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
             </div>
-
-            <div class="metric-box">
-              <span class="metric-label">Accuracy</span>
-              <div class="metric-value-group">
-                <span id="stat-accuracy" class="metric-val">100</span>
-                <span class="metric-unit">%</span>
-              </div>
+            <div class="terminal-title">Human Typing Live Visualizer</div>
+            <div class="terminal-status" id="terminal-state">Idle</div>
+          </div>
+          <div class="card-body terminal-body">
+            <div id="typing-visualizer" class="visualizer-content">
+              <span class="placeholder-text">Live typing simulation will stream here in real-time as keystrokes are sent to the target ESP32...</span>
             </div>
+          </div>
+        </div>
 
-            <div class="metric-box">
-              <span class="metric-label">Progress</span>
-              <div class="metric-value-group">
-                <span id="stat-progress" class="metric-val">0</span>
-                <span class="metric-unit">%</span>
-              </div>
+        <!-- Playback Actions Card -->
+        <div class="card glass playback-card">
+          <div class="card-body playback-container">
+            <div class="progress-bar-container">
+              <div id="progress-bar-fill" class="progress-bar-fill"></div>
             </div>
-
-            <div class="metric-box">
-              <span class="metric-label">Time Remaining</span>
-              <div class="metric-value-group">
-                <span id="stat-eta" class="metric-val">--:--</span>
-                <span class="metric-unit">ETA</span>
+            
+            <div class="playback-controls">
+              <div class="playback-info">
+                Typed <strong id="chars-typed">0</strong> of <strong id="chars-total-playback">0</strong> chars
+              </div>
+              <div class="playback-buttons">
+                <button id="btn-start" class="btn btn-success">
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  <span>Start Auto-Typing</span>
+                </button>
+                <button id="btn-pause" class="btn btn-warning" disabled>
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                  <span>Pause</span>
+                </button>
+                <button id="btn-stop" class="btn btn-danger" disabled>
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="btn-icon"><rect x="4" y="4" width="16" height="16"></rect></svg>
+                  <span>Abort / Stop</span>
+                </button>
               </div>
             </div>
           </div>
