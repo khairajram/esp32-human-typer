@@ -31,15 +31,36 @@
   padding: 0;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: var(--bg-color);
   color: var(--text-primary);
   font-family: var(--font-sans);
   min-height: 100vh;
   overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
   display: flex;
   flex-direction: column;
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
 }
 
 /* Atmospheric Glowing Background Orbs */
@@ -91,14 +112,14 @@ body {
 
 /* App Layout */
 .app-container {
-  max-width: 1440px;
+  max-width: 1560px;
   width: 100%;
   margin: 0 auto;
-  padding: 24px;
+  padding: 24px 24px 60px 24px;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  max-height: 100vh;
+  min-height: 100vh;
+  height: auto;
 }
 
 /* Header Styles */
@@ -362,19 +383,20 @@ body {
 }
 
 .input-textarea {
+  width: 100%;
   flex-grow: 1;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  padding: 20px;
+  padding: 18px 20px;
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.65;
   resize: vertical;
   outline: none;
-  min-height: 420px;
-  height: 460px;
+  min-height: 320px;
+  height: 350px;
   transition: all 0.25s ease;
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
 }
@@ -579,13 +601,13 @@ body {
   background: #04060a;
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.65;
-  padding: 22px;
+  padding: 20px;
   overflow-y: auto;
   position: relative;
-  min-height: 420px;
-  height: 460px;
+  min-height: 350px;
+  height: 370px;
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.7);
@@ -957,27 +979,109 @@ body {
   grid-column: 1 / -1;
 }
 
-.checkbox-row-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* Checklist & Humanization Card Layout */
+.checklist-container-item {
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+  margin-top: 6px;
 }
 
-.checkbox-label {
+.checklist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.checklist-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  user-select: none;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #c084fc;
+  letter-spacing: 0.6px;
 }
 
-.checkbox-label input[type="checkbox"] {
-  accent-color: var(--primary);
-  width: 16px;
-  height: 16px;
+.checklist-icon {
+  color: var(--primary);
+}
+
+.checklist-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.checkbox-row-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checkbox-label-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 14px;
   cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.checkbox-label-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(139, 92, 246, 0.3);
+  transform: translateX(2px);
+}
+
+.checkbox-label-card input[type="checkbox"] {
+  accent-color: var(--primary);
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.checkbox-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checkbox-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.checkbox-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.title-svg-icon {
+  color: var(--primary);
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.header-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* Bottom Hardware Telemetry Section */
