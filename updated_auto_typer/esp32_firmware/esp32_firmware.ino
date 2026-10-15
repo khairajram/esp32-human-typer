@@ -23,10 +23,10 @@ using namespace websockets;
 // ============================================================================
 // CONFIGURATION: SET YOUR WI-FI, SERVER IP, AND UNIT IDENTITY
 // ============================================================================
-const char* WIFI_SSID     = "YOUR_WIFI_NAME";        // <-- Put your Wi-Fi Name here
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";    // <-- Put your Wi-Fi Password here
-const char* SERVER_HOST   = "192.168.1.100";         // <-- Put Central Server IP here
-const uint16_t SERVER_PORT = 3000;                   // <-- Central Server Port (default 3000)
+const char* WIFI_SSID      = "YOUR_WIFI_NAME";        // <-- Put your Wi-Fi Name here
+const char* WIFI_PASSWORD  = "YOUR_WIFI_PASSWORD";    // <-- Put your Wi-Fi Password here
+const char* SERVER_HOST    = "10.208.114.32";         // <-- PC's actual Wi-Fi IP address
+const uint16_t SERVER_PORT = 3000;                    // <-- Central Server Port
 
 // Select Unit Identity: Uncomment UNIT_1 for first ESP32, or UNIT_2 for second ESP32
 #define UNIT_1
@@ -47,16 +47,16 @@ const uint16_t SERVER_PORT = 3000;                   // <-- Central Server Port 
 BleKeyboard bleKeyboard(BLE_KEYBOARD_NAME, "DeepMind", 100);
 WebsocketsClient wsClient;
 
-// Queue & State Management
+// Non-blocking Queue State Machine
 String typingQueue = "";
-volatile bool isTyping = false;
-volatile bool abortRequested = false;
+bool isTyping = false;
 int queueIndex = 0;
+unsigned long nextActionTime = 0;
+
+// Connection & Telemetry Timers
 bool lastBleConnected = false;
 unsigned long lastStatusCheck = 0;
 unsigned long lastReconnectAttempt = 0;
-
-TaskHandle_t typingTaskHandle = NULL;
 
 // Helper: Extract JSON value without external library dependencies
 String extractJsonString(const String& json, const String& key) {
@@ -67,55 +67,6 @@ String extractJsonString(const String& json, const String& key) {
   int endIdx = json.indexOf("\"", startIdx);
   if (endIdx == -1) return "";
   return json.substring(startIdx, endIdx);
-}
-
-// Background FreeRTOS Task running on Core 0 for precision typing delays
-void typingTask(void *pvParameters) {
-  while (true) {
-    if (isTyping && !abortRequested && queueIndex < typingQueue.length()) {
-      int nextSemi = typingQueue.indexOf(';', queueIndex);
-      if (nextSemi != -1) {
-        String cmd = typingQueue.substring(queueIndex, nextSemi);
-        queueIndex = nextSemi + 1;
-
-        if (cmd.length() > 1) {
-          char action = cmd.charAt(0);
-          int comma = cmd.indexOf(',');
-          if (comma != -1) {
-            int keycode = cmd.substring(1, comma).toInt();
-            int delayMs = cmd.substring(comma + 1).toInt();
-
-            if (bleKeyboard.isConnected()) {
-              if (action == 'P') {
-                bleKeyboard.press((uint8_t)keycode);
-              } else if (action == 'R') {
-                bleKeyboard.release((uint8_t)keycode);
-              } else if (action == 'A') {
-                bleKeyboard.releaseAll();
-              }
-            }
-
-            if (delayMs > 0) {
-              vTaskDelay(pdMS_TO_TICKS(delayMs));
-            }
-          }
-        }
-      } else {
-        // Queue finished
-        isTyping = false;
-        bleKeyboard.releaseAll();
-        sendStatusUpdate("idle");
-      }
-    } else {
-      if (abortRequested) {
-        isTyping = false;
-        abortRequested = false;
-        bleKeyboard.releaseAll();
-        sendStatusUpdate("idle");
-      }
-      vTaskDelay(pdMS_TO_TICKS(10));
-    }
-  }
 }
 
 // Send Status Update to Central Server
@@ -153,18 +104,30 @@ void onMessageCallback(WebsocketsMessage message) {
   if (data.indexOf("\"EXECUTE_QUEUE\"") != -1) {
     String queue = extractJsonString(data, "queue");
     if (queue.length() > 0) {
-      Serial.printf("[->] Received typing queue (%d chars)\n", queue.length());
+      Serial.printf("[->] Received typing queue (%d bytes)\n", queue.length());
       typingQueue = queue;
       queueIndex = 0;
-      abortRequested = false;
       isTyping = true;
+      nextActionTime = millis(); // Start immediately
+
+      if (!bleKeyboard.isConnected()) {
+        Serial.println("[!] WARNING: Bluetooth is NOT connected to the target PC!");
+        Serial.printf("    Please open Bluetooth settings on target PC and pair with '%s'\n", BLE_KEYBOARD_NAME);
+      } else {
+        Serial.println("[+] Target PC is connected over Bluetooth. Typing now...");
+      }
+
       sendStatusUpdate("typing");
     }
   }
   // 2. Abort / Stop Typing
   else if (data.indexOf("\"ABORT_QUEUE\"") != -1) {
     Serial.println("[!] Received abort request from server");
-    abortRequested = true;
+    isTyping = false;
+    typingQueue = "";
+    queueIndex = 0;
+    bleKeyboard.releaseAll();
+    sendStatusUpdate("idle");
   }
   // 3. Heartbeat Ping
   else if (data.indexOf("\"PING\"") != -1) {
@@ -174,7 +137,7 @@ void onMessageCallback(WebsocketsMessage message) {
 
 void onEventsCallback(WebsocketsEvent event, String data) {
   if (event == WebsocketsEvent::ConnectionOpened) {
-    Serial.println("[+] WebSocket connection established with Central Server");
+    Serial.println("[+] WebSocket connection established with Central Server!");
     sendRegistration();
   } else if (event == WebsocketsEvent::ConnectionClosed) {
     Serial.println("[-] WebSocket connection closed");
@@ -193,15 +156,15 @@ void connectToWebSocket() {
     cleanHost.remove(cleanHost.length() - 1);
   }
 
-  Serial.printf("[...] Attempting WebSocket connection to %s:%d/ws/device ...\n", cleanHost.c_str(), SERVER_PORT);
+  Serial.printf("[...] Connecting to WebSocket server at %s:%d/ws/device ...\n", cleanHost.c_str(), SERVER_PORT);
   bool success = wsClient.connect(cleanHost.c_str(), SERVER_PORT, "/ws/device");
   if (success) {
-    Serial.println("[+] SUCCESS: WebSocket connected to Central Server!");
+    Serial.println("[+] SUCCESS: WebSocket connected!");
   } else {
     Serial.println("[-] FAILED: Could not reach WebSocket server.");
     Serial.println("    1. Is the Node.js server running on your PC?");
-    Serial.printf("    2. Ensure SERVER_HOST matches your PC Wi-Fi IP (Current: %s)\n", cleanHost.c_str());
-    Serial.println("    3. Check if Windows Firewall is blocking port 3000.");
+    Serial.printf("    2. Is your PC Wi-Fi IP '%s'?\n", cleanHost.c_str());
+    Serial.println("    3. Did Windows Firewall block port 3000?");
   }
 }
 
@@ -235,40 +198,28 @@ void setup() {
   wsClient.onMessage(onMessageCallback);
   wsClient.onEvent(onEventsCallback);
   connectToWebSocket();
-
-  // Launch Core 0 Background Typing Thread
-  xTaskCreatePinnedToCore(
-    typingTask,
-    "typingTask",
-    8192,
-    NULL,
-    1,
-    &typingTaskHandle,
-    0
-  );
-  Serial.println("[+] Core 0 Typing Task initialized");
 }
 
 void loop() {
-  // Check Wi-Fi connection
+  unsigned long now = millis();
+
+  // 1. Check Wi-Fi Connection
   if (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
+    delay(500);
     return;
   }
 
-  // Handle WebSocket Poll & Auto-Reconnect
+  // 2. Poll WebSocket & Auto-Reconnect
   if (wsClient.available()) {
     wsClient.poll();
   } else {
-    unsigned long now = millis();
     if (now - lastReconnectAttempt > 3000) {
       lastReconnectAttempt = now;
       connectToWebSocket();
     }
   }
 
-  // Monitor Bluetooth Connection Status changes
-  unsigned long now = millis();
+  // 3. Monitor Bluetooth Connection Status changes
   if (now - lastStatusCheck > 1000) {
     lastStatusCheck = now;
     bool currentBleState = bleKeyboard.isConnected();
@@ -276,6 +227,54 @@ void loop() {
       lastBleConnected = currentBleState;
       Serial.printf("[BLE] Status changed: %s\n", currentBleState ? "CONNECTED TO PC" : "DISCONNECTED");
       sendStatusUpdate(isTyping ? "typing" : "idle");
+    }
+  }
+
+  // 4. Non-blocking Typing State Machine
+  if (isTyping && now >= nextActionTime) {
+    if (queueIndex < typingQueue.length()) {
+      int nextSemi = typingQueue.indexOf(';', queueIndex);
+      if (nextSemi != -1) {
+        String cmd = typingQueue.substring(queueIndex, nextSemi);
+        queueIndex = nextSemi + 1;
+
+        if (cmd.length() > 1) {
+          char action = cmd.charAt(0);
+          int comma = cmd.indexOf(',');
+          if (comma != -1) {
+            int keycode = cmd.substring(1, comma).toInt();
+            int delayMs = cmd.substring(comma + 1).toInt();
+
+            if (bleKeyboard.isConnected()) {
+              if (action == 'P') {
+                bleKeyboard.press((uint8_t)keycode);
+              } else if (action == 'R') {
+                bleKeyboard.release((uint8_t)keycode);
+              } else if (action == 'A') {
+                bleKeyboard.releaseAll();
+              }
+            }
+
+            // Schedule next event with exact human delay
+            nextActionTime = millis() + (delayMs > 0 ? delayMs : 2);
+          }
+        }
+      } else {
+        // Queue finished
+        isTyping = false;
+        typingQueue = "";
+        queueIndex = 0;
+        bleKeyboard.releaseAll();
+        Serial.println("[+] Typing completed successfully!");
+        sendStatusUpdate("idle");
+      }
+    } else {
+      isTyping = false;
+      typingQueue = "";
+      queueIndex = 0;
+      bleKeyboard.releaseAll();
+      Serial.println("[+] Typing completed successfully!");
+      sendStatusUpdate("idle");
     }
   }
 
